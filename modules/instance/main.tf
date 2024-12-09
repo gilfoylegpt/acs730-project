@@ -14,55 +14,55 @@ resource "aws_instance" "public" {
   )
 }
 
-resource "null_resource" "create_ami" {
-  provisioner "local-exec" {
-    command = <<EOF
-    INSTANCE_STATE=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].State.Name" --output text --region us-east-1)
-    until [ "$INSTANCE_STATE" == "running" ]; do
-      echo "Waiting for instance to be in running state..."
-      sleep 10
-      INSTANCE_STATE=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].State.Name" --output text --region us-east-1)
-    done
-    echo "Instance is in running state!"
+# resource "null_resource" "create_ami" {
+#   provisioner "local-exec" {
+#     command = <<EOF
+#     INSTANCE_STATE=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].State.Name" --output text --region us-east-1)
+#     until [ "$INSTANCE_STATE" == "running" ]; do
+#       echo "Waiting for instance to be in running state..."
+#       sleep 10
+#       INSTANCE_STATE=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].State.Name" --output text --region us-east-1)
+#     done
+#     echo "Instance is in running state!"
 
-    INSTANCE_PUBLIC_IP=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].PublicIpAddress" --output text --region us-east-1)
-    until [ "$INSTANCE_PUBLIC_IP" != "None" ] && [ -n "$INSTANCE_PUBLIC_IP" ]; do
-      echo "Waiting for public IP to be assigned..."
-      sleep 10
-      INSTANCE_PUBLIC_IP=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].PublicIpAddress" --output text --region us-east-1)
-    done
-    echo "Public IP is available: $INSTANCE_PUBLIC_IP"
+#     INSTANCE_PUBLIC_IP=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].PublicIpAddress" --output text --region us-east-1)
+#     until [ "$INSTANCE_PUBLIC_IP" != "None" ] && [ -n "$INSTANCE_PUBLIC_IP" ]; do
+#       echo "Waiting for public IP to be assigned..."
+#       sleep 10
+#       INSTANCE_PUBLIC_IP=$(aws ec2 describe-instances --instance-ids ${aws_instance.public[0].id} --query "Reservations[0].Instances[0].PublicIpAddress" --output text --region us-east-1)
+#     done
+#     echo "Public IP is available: $INSTANCE_PUBLIC_IP"
 
-    until $(curl --output /dev/null --silent --head --fail http://${aws_instance.public[0].public_ip}:80); do
-      echo "Waiting for HTTP service to start..."
-      sleep 10
-    done
-    echo "HTTP service is up and running!"
-    
-    EXISTING_AMI_ID=$(aws ec2 describe-images \
-      --filters "Name=name,Values=${var.prefix}-${var.env}-webserver-ami" \
-      --query "Images[0].ImageId" \
-      --output text --region us-east-1 || echo "null")
+#     until $(curl --output /dev/null --silent --head --fail http://${aws_instance.public[0].public_ip}:80); do
+#       echo "Waiting for HTTP service to start..."
+#       sleep 10
+#     done
+#     echo "HTTP service is up and running!"
 
-    if [ "$EXISTING_AMI_ID" != "None" ] && [ "$EXISTING_AMI_ID" != "null" ]; then
-      echo "Deleting existing AMI: $EXISTING_AMI_ID"
-      aws ec2 deregister-image --image-id $EXISTING_AMI_ID --region us-east-1
-    else
-      echo "No existing AMI found. Skipping deletion."
-    fi
+#     EXISTING_AMI_ID=$(aws ec2 describe-images \
+#       --filters "Name=name,Values=${var.prefix}-${var.env}-webserver-ami" \
+#       --query "Images[0].ImageId" \
+#       --output text --region us-east-1 || echo "null")
 
-    echo "Creating new AMI..."
-    aws ec2 create-image --instance-id ${aws_instance.public[0].id} \
-      --name "${var.prefix}-${var.env}-webserver-ami" \
-      --no-reboot \
-      --query 'ImageId' \
-      --region us-east-1 \
-      --output text > /tmp/${var.env}-ami-id.txt
-    EOF
-  }
+#     if [ "$EXISTING_AMI_ID" != "None" ] && [ "$EXISTING_AMI_ID" != "null" ]; then
+#       echo "Deleting existing AMI: $EXISTING_AMI_ID"
+#       aws ec2 deregister-image --image-id $EXISTING_AMI_ID --region us-east-1
+#     else
+#       echo "No existing AMI found. Skipping deletion."
+#     fi
 
-  depends_on = [aws_instance.public]
-}
+#     echo "Creating new AMI..."
+#     aws ec2 create-image --instance-id ${aws_instance.public[0].id} \
+#       --name "${var.prefix}-${var.env}-webserver-ami" \
+#       --no-reboot \
+#       --query 'ImageId' \
+#       --region us-east-1 \
+#       --output text > /tmp/${var.env}-ami-id.txt
+#     EOF
+#   }
+
+#   depends_on = [aws_instance.public]
+# }
 
 resource "aws_instance" "webserver5" {
   ami             = var.instance_image_id

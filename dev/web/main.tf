@@ -62,10 +62,42 @@ module "dev-loadblancer" {
   instance_id_list  = [module.dev-instance.public_instance_ids[0], module.dev-instance.public_instance_ids[1]]
 }
 
+resource "null_resource" "create_ami" {
+  provisioner "local-exec" {
+    command = <<EOF
+    until $(curl --output /dev/null --silent --head --fail http://${module.dev-loadblancer.load_balancer_dns}:80); do
+      sleep 10
+    done
+    
+    EXISTING_AMI_ID=$(aws ec2 describe-images \
+      --filters "Name=name,Values=${module.global.prefix}-${var.env}-webserver-ami" \
+      --query "Images[0].ImageId" \
+      --output text --region us-east-1 || echo "null")
+
+    if [ "$EXISTING_AMI_ID" != "None" ] && [ "$EXISTING_AMI_ID" != "null" ]; then
+      echo "Deleting existing AMI: $EXISTING_AMI_ID"
+      aws ec2 deregister-image --image-id $EXISTING_AMI_ID --region us-east-1
+    else
+      echo "No existing AMI found. Skipping deletion."
+    fi
+
+    echo "Creating new AMI..."
+    aws ec2 create-image --instance-id ${module.dev-instance.public_instance_ids[0]} \
+      --name "${module.global.prefix}-${var.env}-webserver-ami" \
+      --no-reboot \
+      --query 'ImageId' \
+      --region us-east-1 \
+      --output text > /tmp/${var.env}-ami-id.txt
+    EOF
+  }
+
+  depends_on = [module.dev-loadblancer]
+}
+
 data "local_file" "ami_id" {
   filename = "/tmp/${var.env}-ami-id.txt"
 
-  depends_on = [module.dev-instance]
+  depends_on = [null_resource.create_ami]
 }
 
 module "dev-asg" {
@@ -79,4 +111,6 @@ module "dev-asg" {
   key_name          = module.dev-keypair.sshkey_name
   public_websg_id   = module.dev-securitygroup.public_websg_id
   ami_id            = trimspace(data.local_file.ami_id.content)
+
+  depends_on = [null_resource.create_ami]
 }
