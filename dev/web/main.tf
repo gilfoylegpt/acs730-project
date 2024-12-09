@@ -62,6 +62,12 @@ module "dev-loadblancer" {
   instance_id_list  = [module.dev-instance.public_instance_ids[0], module.dev-instance.public_instance_ids[1]]
 }
 
+data "local_file" "ami_id" {
+  filename = "/tmp/${var.env}-ami-id.txt"
+
+  depends_on = [module.dev-instance]
+}
+
 module "dev-asg" {
   source            = "../../modules/autoscalinggroup"
   env               = var.env
@@ -72,4 +78,5 @@ module "dev-asg" {
   target_group_arn  = module.dev-loadblancer.target_group_arn
   key_name          = module.dev-keypair.sshkey_name
   public_websg_id   = module.dev-securitygroup.public_websg_id
+  ami_id            = trimspace(data.local_file.ami_id.content)
 }

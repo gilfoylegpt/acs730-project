@@ -45,3 +45,9 @@ variable "public_websg_id" {
   type        = string
   description = "public websg id"
 }
+
+variable "ami_id" {
+  default     = ""
+  type        = string
+  description = "ami id"
+}

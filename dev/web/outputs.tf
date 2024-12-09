@@ -33,3 +33,11 @@ output "loadbalancer_arn" {
 output "targetgroup_arn" {
   value = module.dev-loadblancer.target_group_arn
 }
+
+output "template_arn" {
+  value = module.dev-asg.template_arn
+}
+
+output "autoscaling_arn" {
+  value = module.dev-asg.autoscaling_group_arn
+}

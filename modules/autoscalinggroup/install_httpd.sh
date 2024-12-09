@@ -1,6 +1,4 @@
 #!/bin/bash
-sudo yum -y update
-sudo yum -y install httpd
 sudo systemctl stop httpd
 myip=`curl http://169.254.169.254/latest/meta-data/local-ipv4`
 sudo chmod -R 777 /var/www

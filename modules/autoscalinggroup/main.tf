@@ -1,10 +1,7 @@
-data "local_file" "ami_id" {
-  filename = "/tmp/${var.env}-ami-id.txt"
-}
-
 resource "aws_launch_template" "template" {
+  depends_on             = [null_resource.wait_for_ami]
   name                   = "${var.env}-webserver-template"
-  image_id               = trimspace(data.local_file.ami_id.content)
+  image_id               = var.ami_id
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = [var.public_websg_id]
@@ -22,7 +19,27 @@ resource "aws_launch_template" "template" {
   }
 }
 
+resource "null_resource" "wait_for_ami" {
+  provisioner "local-exec" {
+    command = <<EOF
+    echo "Checking AMI state..."
+    AMI_STATE="pending"
+    while [ "$AMI_STATE" != "available" ]; do
+      sleep 10
+      AMI_STATE=$(aws ec2 describe-images \
+        --image-ids ${var.ami_id} \
+        --query "Images[0].State" \
+        --region us-east-1 \
+        --output text)
+      echo "AMI state: $AMI_STATE"
+    done
+    echo "AMI is now available!"
+    EOF
+  }
+}
+
 resource "aws_autoscaling_group" "autoscaling" {
+  depends_on                = [null_resource.wait_for_ami]
   name                      = "${var.env}-asg"
   vpc_zone_identifier       = var.network_datablock.outputs.public_subnet_ids
   desired_capacity          = 2
