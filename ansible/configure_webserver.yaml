@@ -1,28 +1,21 @@
----
 - hosts: tag_ACS730_Project
   gather_facts: True
   become: yes
   vars:
     ansible_user: ec2-user
-    ansible_ssh_private_key_file: ./lab  
+    ansible_ssh_private_key_file: ./lab
     source_file: ./index.html
     dest_file: /var/www/html
-   
   tasks:
     - name: Install Apache Web Server
       yum: name=httpd state=latest
-    
     - name: Copy index.html
       copy: src={{ source_file }} dest={{ dest_file }} mode=0555
-
     - name: Start Web Server
       service: name=httpd state=started enabled=yes
-
-    - name: httpd status 
+    - name: httpd status
       shell: systemctl status httpd
       register: result
-
     - name: Print httpd status
-      debug: 
+      debug:
         msg: "{{ result }}"
-      
