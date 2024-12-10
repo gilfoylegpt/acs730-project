@@ -98,7 +98,7 @@ jobs:
   ansible:
     name: "Ansible"
     runs-on: ubuntu-20.04
-    needs: terraform
+    # needs: terraform
     environment: staging
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
