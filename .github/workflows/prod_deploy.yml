@@ -113,7 +113,15 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ansible
+      - name: install additional dependencies for ansible which runs in venv
+        run: |
+          source /opt/pipx/venvs/ansible-core/bin/activate
+          python -m pip install boto3
       - name: Run Ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
         if: github.ref == 'refs/heads/prod' && github.event_name == 'push'
-        run: ansible-playbook -i ../prod/aws_ec2.yaml ./configure_webserver.yaml
+        run: |
+          sudo chmod 400 ./lab
+          ansible-playbook -i ../prod/aws_ec2.yaml ./configure_webserver.yaml
         working-directory: ./ansible
