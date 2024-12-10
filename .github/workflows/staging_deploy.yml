@@ -118,6 +118,8 @@ jobs:
           source /opt/pipx/venvs/ansible-core/bin/activate
           python -m pip install boto3
       - name: Run Ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
         if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
         run: ansible-playbook -i ../staging/aws_ec2.yaml ./configure_webserver.yaml
         working-directory: ./ansible
