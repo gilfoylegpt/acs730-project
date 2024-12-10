@@ -54,6 +54,7 @@ prod: once staging branch merged into prod branch, it will trigger the whole pip
 ### Pipeline pre-requisites:
 Two s3 buckets needed:
         acs730-project: to store terraform state 
+        
         acs730-images: to store images 
 
 
