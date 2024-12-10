@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 module "global" {
-  source = "../../modules/global"
+  source = "../modules/global"
 }
 
 locals {
@@ -23,49 +23,49 @@ data "terraform_remote_state" "network" {
   }
 }
 
-module "dev-keypair" {
-  source       = "../../modules/keypair"
+module "keypair" {
+  source       = "../modules/keypair"
   env          = var.env
   prefix       = module.global.prefix
   default_tags = local.default_tags
 }
 
-module "dev-securitygroup" {
-  source            = "../../modules/securitygroup"
+module "securitygroup" {
+  source            = "../modules/securitygroup"
   env               = var.env
   prefix            = module.global.prefix
   default_tags      = local.default_tags
   network_datablock = data.terraform_remote_state.network
 }
 
-module "dev-instance" {
-  source               = "../../modules/instance"
+module "instance" {
+  source               = "../modules/instance"
   env                  = var.env
   instance_type        = var.instance_type
   instance_image_id    = module.global.latest_amazon_linux.id
   prefix               = module.global.prefix
   default_tags         = local.default_tags
   network_datablock    = data.terraform_remote_state.network
-  public_websg_id      = module.dev-securitygroup.public_websg_id
-  private_websg_id     = module.dev-securitygroup.private_websg_id
-  private_onlysshsg_id = module.dev-securitygroup.private_onlysshsg_id
-  ssh_key_pair_name    = module.dev-keypair.sshkey_name
+  public_websg_id      = module.securitygroup.public_websg_id
+  private_websg_id     = module.securitygroup.private_websg_id
+  private_onlysshsg_id = module.securitygroup.private_onlysshsg_id
+  ssh_key_pair_name    = module.keypair.sshkey_name
 }
 
-module "dev-loadblancer" {
-  source            = "../../modules/loadbalancer"
+module "loadbalancer" {
+  source            = "../modules/loadbalancer"
   env               = var.env
   prefix            = module.global.prefix
   default_tags      = local.default_tags
-  public_websg_id   = module.dev-securitygroup.public_websg_id
+  public_websg_id   = module.securitygroup.public_websg_id
   network_datablock = data.terraform_remote_state.network
-  instance_id_list  = [module.dev-instance.public_instance_ids[0], module.dev-instance.public_instance_ids[1]]
+  instance_id_list  = [module.instance.public_instance_ids[0], module.instance.public_instance_ids[1]]
 }
 
 resource "null_resource" "create_ami" {
   provisioner "local-exec" {
     command = <<EOF
-    until $(curl --output /dev/null --silent --head --fail http://${module.dev-loadblancer.load_balancer_dns}:80); do
+    until $(curl --output /dev/null --silent --head --fail http://${module.loadbalancer.load_balancer_dns}:80); do
       sleep 10
     done
     
@@ -82,7 +82,7 @@ resource "null_resource" "create_ami" {
     fi
 
     echo "Creating new AMI..."
-    aws ec2 create-image --instance-id ${module.dev-instance.public_instance_ids[0]} \
+    aws ec2 create-image --instance-id ${module.instance.public_instance_ids[0]} \
       --name "${module.global.prefix}-${var.env}-webserver-ami" \
       --no-reboot \
       --query 'ImageId' \
@@ -91,7 +91,7 @@ resource "null_resource" "create_ami" {
     EOF
   }
 
-  depends_on = [module.dev-loadblancer]
+  depends_on = [module.loadbalancer]
 }
 
 data "local_file" "ami_id" {
@@ -100,16 +100,16 @@ data "local_file" "ami_id" {
   depends_on = [null_resource.create_ami]
 }
 
-module "dev-asg" {
-  source            = "../../modules/autoscalinggroup"
+module "autoscalinggroup" {
+  source            = "../modules/autoscalinggroup"
   env               = var.env
   instance_type     = var.instance_type
   default_tags      = local.default_tags
   prefix            = module.global.prefix
   network_datablock = data.terraform_remote_state.network
-  target_group_arn  = module.dev-loadblancer.target_group_arn
-  key_name          = module.dev-keypair.sshkey_name
-  public_websg_id   = module.dev-securitygroup.public_websg_id
+  target_group_arn  = module.loadbalancer.target_group_arn
+  key_name          = module.keypair.sshkey_name
+  public_websg_id   = module.securitygroup.public_websg_id
   ami_id            = trimspace(data.local_file.ami_id.content)
 
   depends_on = [null_resource.create_ami]
