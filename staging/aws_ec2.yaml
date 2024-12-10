@@ -1,0 +1,14 @@
+---
+plugin: aws_ec2
+regions:
+  - us-east-1
+keyed_groups:
+  - key: tags.App
+    prefix: tag
+filters:
+  instance-state-name: running
+  tag:Name:
+    - ACS730-staging-webserver-2
+    - ACS730-staging-webserver-3
+compose:
+  ansible_host: public_ip_address
