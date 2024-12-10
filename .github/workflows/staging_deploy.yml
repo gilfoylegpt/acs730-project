@@ -113,8 +113,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ansible
-          sudo apt install -y python3-pip
-          pip3 install boto3 botocore
+          python -m pip install boto3
       - name: Run Ansible
         if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
         run: ansible-playbook -i ../staging/aws_ec2.yaml ./configure_webserver.yaml
