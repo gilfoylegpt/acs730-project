@@ -113,6 +113,9 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y ansible
+      - name: install additional dependencies for ansible which runs in venv
+        run: |
+          source /opt/pipx/venvs/ansible-core/bin/activate
           python -m pip install boto3
       - name: Run Ansible
         if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
